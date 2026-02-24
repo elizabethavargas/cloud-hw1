@@ -1,6 +1,15 @@
 var checkout = {};
+var apigClient = apigClientFactory.newClient();
+
 
 $(document).ready(function() {
+  // Create or reuse session ID for this browser
+  let sessionId = localStorage.getItem("sessionId");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+  }
+
   var $messages = $('.messages-content'),
     d, h, m,
     i = 0;
@@ -28,6 +37,7 @@ $(document).ready(function() {
   function callChatbotApi(message) {
     // params, body, additionalParams
     return sdk.chatbotPost({}, {
+      sessionId: sessionId,
       messages: [{
         type: 'unstructured',
         unstructured: {
@@ -49,7 +59,6 @@ $(document).ready(function() {
 
     callChatbotApi(msg)
       .then((response) => {
-        console.log(response);
         var data = response.data;
 
         if (data.messages && data.messages.length > 0) {

@@ -53,7 +53,7 @@ apigClientFactory.newClient = function (config) {
 
     
     // extract endpoint and path from url
-    var invokeUrl = 'https://2fxxarip4g.execute-api.us-east-2.amazonaws.com/dev';
+    var invokeUrl = 'https://zkif0ik5wc.execute-api.us-east-1.amazonaws.com/prod';
     var endpoint = /(^https?:\/\/[^\/]+)/g.exec(invokeUrl)[1];
     var pathComponent = invokeUrl.substring(endpoint.length);
 
@@ -83,21 +83,39 @@ apigClientFactory.newClient = function (config) {
     
     
     
-    apigClient.chatPost = function (params, body, additionalParams) {
+    apigClient.chatbotPost = function (params, body, additionalParams) {
         if(additionalParams === undefined) { additionalParams = {}; }
         
         apiGateway.core.utils.assertParametersDefined(params, [], ['body']);
         
-        var chatPostRequest = {
+        var chatbotPostRequest = {
             verb: 'post'.toUpperCase(),
-            path: pathComponent + uritemplate('/chat').expand(apiGateway.core.utils.parseParametersToObject(params, [])),
+            path: pathComponent + uritemplate('/chatbot').expand(apiGateway.core.utils.parseParametersToObject(params, [])),
             headers: apiGateway.core.utils.parseParametersToObject(params, []),
             queryParams: apiGateway.core.utils.parseParametersToObject(params, []),
             body: body
         };
         
         
-        return apiGatewayClient.makeRequest(chatPostRequest, authType, additionalParams, config.apiKey);
+        return apiGatewayClient.makeRequest(chatbotPostRequest, authType, additionalParams, config.apiKey);
+    };
+    
+    
+    apigClient.chatbotOptions = function (params, body, additionalParams) {
+        if(additionalParams === undefined) { additionalParams = {}; }
+        
+        apiGateway.core.utils.assertParametersDefined(params, [], ['body']);
+        
+        var chatbotOptionsRequest = {
+            verb: 'options'.toUpperCase(),
+            path: pathComponent + uritemplate('/chatbot').expand(apiGateway.core.utils.parseParametersToObject(params, [])),
+            headers: apiGateway.core.utils.parseParametersToObject(params, []),
+            queryParams: apiGateway.core.utils.parseParametersToObject(params, []),
+            body: body
+        };
+        
+        
+        return apiGatewayClient.makeRequest(chatbotOptionsRequest, authType, additionalParams, config.apiKey);
     };
     
 

@@ -17,7 +17,7 @@ def lambda_handler(event, context):
         botId=os.environ['BOT_ID'],
         botAliasId=os.environ['BOT_ALIAS_ID'],
         localeId='en_US',
-        sessionId=event['requestContext']['requestId'],
+        sessionId=body.get("sessionId", "default-session"),
         text=user_text
     )
     

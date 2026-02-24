@@ -1,4 +1,10 @@
 import json
+import boto3
+import os
+from datetime import datetime, date as dt_date
+
+sqs = boto3.client('sqs')
+QUEUE_URL = os.environ['QUEUE_URL']
 
 def lambda_handler(event, context):
     # get event and slots
@@ -12,6 +18,8 @@ def lambda_handler(event, context):
         message = "You're welcome!"
         
     elif intent == "DiningSuggestionsIntent":
+        invocation_source = event["invocationSource"]
+    
         location = slots['location']["value"].get("interpretedValue") if slots.get('location') and slots['location'].get("value") else None
         cuisine = slots['cuisine']["value"].get("interpretedValue") if slots.get('cuisine') and slots['cuisine'].get("value") else None
         date = slots['diningDate']["value"].get("interpretedValue") if slots.get('diningDate') and slots['diningDate'].get("value") else None
@@ -62,10 +70,51 @@ def lambda_handler(event, context):
                     }
                 ]
             }
+        
+        if people and ((int(people) < 1) or (int(people) > 10)):
+            return {
+                "sessionState": {
+                    "dialogAction": {
+                        "type": "ElicitSlot",
+                        "slotToElicit": "numberOfPeople"
+                    },
+                    "intent": {
+                        "name": intent,
+                        "slots": slots,
+                        "state": "InProgress"
+                    }
+                },
+                "messages": [
+                    {
+                        "contentType": "PlainText",
+                        "content": f"We can only accommodate 1 to 10 guests. How many people are in your party?"
+                    }
+                ]
+            }
+        
+        if date and datetime.strptime(date, "%Y-%m-%d").date() < dt_date.today():
+            return {
+                "sessionState": {
+                    "dialogAction": {
+                        "type": "ElicitSlot",
+                        "slotToElicit": "diningDate"
+                    },
+                    "intent": {
+                        "name": intent,
+                        "slots": slots,
+                        "state": "InProgress"
+                    }
+                },
+                "messages": [
+                    {
+                        "contentType": "PlainText",
+                        "content": f"We cannot book for a past date. Please pick a future date."
+                    }
+                ]
+            }
 
-
-        if None in [location, cuisine, time, people, email]:
-            # Let Lex continue collecting slots
+        if None in [location, cuisine, time, people, email, date]:
+            # let Lex continue collecting slots
             return {
                 "sessionState": {
                     "dialogAction": {
@@ -79,8 +128,51 @@ def lambda_handler(event, context):
                 }
             }
 
-        # all slots filled
+        if invocation_source == "DialogCodeHook":
+            return {
+                "sessionState": {
+                    "dialogAction": {"type": "Delegate"},
+                    "intent": {
+                        "name": intent,
+                        "slots": slots,
+                        "state": "InProgress"
+                    }
+                }
+            }
+
+        if invocation_source == "FulfillmentCodeHook":
+            message_body = {
+                "location": location,
+                "cuisine": cuisine,
+                "date": date,
+                "time": time,
+                "people": people,
+                "email": email
+            }
+
+            sqs.send_message(
+                QueueUrl=QUEUE_URL,
+                MessageBody=json.dumps(message_body)
+            )
+
+            return {
+                "sessionState": {
+                    "dialogAction": {"type": "Close"},
+                    "intent": {
+                        "name": intent,
+                        "state": "Fulfilled"
+                    }
+                },
+                "messages": [
+                    {
+                        "contentType": "PlainText",
+                        "content": "Thanks! I have received your request and will send restaurant suggestions shortly."
+                    }
+                ]
+            }
+
         message = "Thanks! I have received your request and will send restaurant suggestions shortly."
+
 
     # no intent triggered
     elif intent == "FallbackIntent":
@@ -107,4 +199,3 @@ def lambda_handler(event, context):
             }
         ]
     }
-
