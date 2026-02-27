@@ -1,4 +1,3 @@
-
 import json
 import boto3
 import os
@@ -16,18 +15,12 @@ table = dynamodb.Table(DYNAMODB_TABLE)
 ses = boto3.client('ses')
 
 # OpenSearch client
-credentials = boto3.Session().get_credentials()
-awsauth = AWS4Auth(
-    credentials.access_key,
-    credentials.secret_key,
-    'us-east-1',
-    'es',
-    session_token=credentials.token
-)
+OPENSEARCH_USER = os.environ['OPENSEARCH_USER']
+OPENSEARCH_PASS = os.environ['OPENSEARCH_PASS']
 
 os_client = OpenSearch(
     hosts=[{'host': OPENSEARCH_ENDPOINT, 'port': 443}],
-    http_auth=awsauth,
+    http_auth=(OPENSEARCH_USER, OPENSEARCH_PASS),
     use_ssl=True,
     verify_certs=True,
     connection_class=RequestsHttpConnection
@@ -54,12 +47,12 @@ def get_recommendations(message):
         index='restaurants',
         body={
             'size': 20,
-            'query': {'match': {'cuisine': cuisine}}
+            'query': {'match': {'Cuisine': cuisine}}
         }
     )
     
     # Get IDs
-    ids = [hit['_source']['restaurant_id'] for hit in response['hits']['hits']]
+    ids = [hit['_source']['RestaurantID'] for hit in response['hits']['hits']]
     
     # Select 3 random
     selected = random.sample(ids, min(3, len(ids)))
@@ -67,7 +60,7 @@ def get_recommendations(message):
     # Get from DynamoDB
     restaurants = []
     for rid in selected:
-        item = table.get_item(Key={'restaurant_id': rid})
+        item = table.get_item(Key={'businessId': rid})
         if 'Item' in item:
             restaurants.append(item['Item'])
     
@@ -75,6 +68,7 @@ def get_recommendations(message):
 
 def send_email(message, restaurants):
     body = f"Restaurants for {message['cuisine']}:\n\n"
+    print('restaurants', restaurants)
     for i, r in enumerate(restaurants, 1):
         body += f"{i}. {r['name']} - {r['address']} ({r['rating']} stars)\n"
     
@@ -86,3 +80,5 @@ def send_email(message, restaurants):
             'Body': {'Text': {'Data': body}}
         }
     )
+
+

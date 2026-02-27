@@ -1,7 +1,6 @@
 var checkout = {};
 var apigClient = apigClientFactory.newClient();
 
-
 $(document).ready(function() {
   // Create or reuse session ID for this browser
   let sessionId = localStorage.getItem("sessionId");
@@ -14,17 +13,40 @@ $(document).ready(function() {
     d, h, m,
     i = 0;
 
-  $(window).load(function() {
-    $messages.mCustomScrollbar();
-    insertResponseMessage('Hi there, I\'m your personal Concierge. How can I help?');
-  });
 
-  function updateScrollbar() {
-    $messages.mCustomScrollbar("update").mCustomScrollbar('scrollTo', 'bottom', {
-      scrollInertia: 10,
-      timeout: 0
+    
+    
+  $(window).on('load', function() {
+    $messages.mCustomScrollbar();
+    startConversation();
+  });
+    
+  function startConversation() {
+    callChatbotApi("__START__")
+      .then((response) => {
+        var data = response.data;
+        if (data.messages && data.messages.length > 0) {
+          for (var message of data.messages) {
+            if (message.type === 'unstructured') {
+              insertResponseMessage(message.unstructured.text);
+            }
+          }
+        }
+    })
+    .catch((error) => {
+      console.log("Error starting conversation", error);
+      insertResponseMessage("Oops, something went wrong.");
     });
-  }
+}
+    
+    function updateScrollbar() {
+      setTimeout(function() {
+        $messages.mCustomScrollbar("update");
+        $messages.mCustomScrollbar("scrollTo", "bottom", {
+          scrollInertia: 0
+        });
+      }, 0);
+    }
 
   function setDate() {
     d = new Date()
@@ -43,12 +65,13 @@ $(document).ready(function() {
         unstructured: {
           text: message
         }
-      }]
+      }],
     }, {});
   }
 
+
   function insertMessage() {
-    msg = $('.message-input').val();
+    var msg = $('.message-input').val();
     if ($.trim(msg) == '') {
       return false;
     }
@@ -108,6 +131,7 @@ $(document).ready(function() {
   })
 
   function insertResponseMessage(content) {
+    content = content.replace(/\n/g, '<br>');
     $('<div class="message loading new"><figure class="avatar"><img src="https://media.tenor.com/images/4c347ea7198af12fd0a66790515f958f/tenor.gif" /></figure><span></span></div>').appendTo($('.mCSB_container'));
     updateScrollbar();
 
